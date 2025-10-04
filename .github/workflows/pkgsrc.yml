@@ -1,4 +1,4 @@
-name: pkgsrc Bulk Builder x86 for LiberoGNU/Linux
+name: pkgsrc Bulk Builder x86 for Libero GNU/Linux
 
 on:
   workflow_dispatch:
@@ -69,7 +69,12 @@ jobs:
             zlib1g-dev:i386 \
             libbz2-dev:i386 \
             libc6-dev-i386 \
-            ca-certificates
+            ca-certificates \
+            wget \
+            tar \
+            bash \
+            ccache \
+            rsync
 
       - name: Download pkgsrc 2025Q3
         run: |
@@ -82,23 +87,39 @@ jobs:
           ./bootstrap --prefix=/usr/pkg
           echo "/usr/pkg/bin" >> $GITHUB_PATH
 
-      - name: Set target architecture to x86
+      - name: Set target architecture
         run: |
-          export PKG_DEFAULT_MACHINE=i386   # Change to x86_64 if needed
+          export PKG_DEFAULT_MACHINE=i386
           export PKG_DEFAULT_ABI=linux
+          echo "PKG_DEFAULT_MACHINE=$PKG_DEFAULT_MACHINE" >> $GITHUB_ENV
+          echo "PKG_DEFAULT_ABI=$PKG_DEFAULT_ABI" >> $GITHUB_ENV
 
-      - name: Build packages in category
+      - name: Install pbulk
         run: |
-          cd pkgsrc/${{ matrix.category }}
-          for pkg in */; do
-            echo "=== Building ${pkg} ==="
-            (cd "$pkg" && bmake clean package || echo "Failed: ${pkg}")
-          done
+          cd pkgsrc/pkgtools/pbulk
+          bmake install
 
-      - name: Compress built packages
+      - name: Configure pbulk
+        run: |
+          mkdir -p ~/.pbulk
+          cat > ~/.pbulk/pbulk.conf << 'EOF'
+          CHROOT=
+          BASEDIR=/usr/pkg
+          PKG_PATH=/usr/pkg/packages
+          JOBS=$(nproc)
+          KEEP_GOING=yes
+          LOGFILE=/tmp/pbulk.log
+          EOF
+
+      - name: Build category with pbulk
+        run: |
+          cd pkgsrc
+          pbulk -c ~/.pbulk/pbulk.conf -C $GITHUB_WORKSPACE/pkgsrc/${{ matrix.category }}
+
+      - name: Collect built packages
         run: |
           mkdir -p /tmp/artifacts/${{ matrix.category }}
-          find /usr/pkgsrc -name "*.tgz" -exec mv {} /tmp/artifacts/${{ matrix.category }}/ \; || true
+          rsync -av /usr/pkg/packages/${{ matrix.category }}/ /tmp/artifacts/${{ matrix.category }}/ || true
           du -sh /tmp/artifacts/${{ matrix.category }}
 
       - name: Upload artifacts to GitHub
