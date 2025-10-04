@@ -1,0 +1,108 @@
+name: pkgsrc Bulk Builder x86 for LiberoGNU/Linux
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build pkgsrc (${{ matrix.category }})
+    runs-on: ubuntu-latest
+
+    container:
+      image: i386/debian:12
+      options: --user root
+
+    strategy:
+      fail-fast: false
+      matrix:
+        category:
+          - archivers
+          - audio
+          - benchmarks
+          - cad
+          - chat
+          - converters
+          - databases
+          - devel
+          - editors
+          - emulators
+          - fonts
+          - games
+          - geography
+          - graphics
+          - ham
+          - lang
+          - mail
+          - math
+          - misc
+          - multimedia
+          - net
+          - news
+          - pkgtools
+          - print
+          - security
+          - shells
+          - sysutils
+          - textproc
+          - time
+          - www
+          - x11
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build essentials
+        run: |
+          dpkg --add-architecture i386
+          apt-get update
+          apt-get install -y \
+            build-essential \
+            gcc-multilib \
+            g++-multilib \
+            make \
+            bmake \
+            git \
+            curl \
+            pkg-config \
+            libssl-dev:i386 \
+            zlib1g-dev:i386 \
+            libbz2-dev:i386 \
+            libc6-dev-i386 \
+            ca-certificates
+
+      - name: Download pkgsrc 2025Q3
+        run: |
+          wget https://cdn.netbsd.org/pub/pkgsrc/pkgsrc-2025Q3/pkgsrc-2025Q3.tar.gz
+          tar -xzf pkgsrc-2025Q3.tar.gz
+
+      - name: Bootstrap pkgsrc into /usr/pkg
+        run: |
+          cd pkgsrc/bootstrap
+          ./bootstrap --prefix=/usr/pkg
+          echo "/usr/pkg/bin" >> $GITHUB_PATH
+
+      - name: Set target architecture to x86
+        run: |
+          export PKG_DEFAULT_MACHINE=i386   # Change to x86_64 if needed
+          export PKG_DEFAULT_ABI=linux
+
+      - name: Build packages in category
+        run: |
+          cd pkgsrc/${{ matrix.category }}
+          for pkg in */; do
+            echo "=== Building ${pkg} ==="
+            (cd "$pkg" && bmake clean package || echo "Failed: ${pkg}")
+          done
+
+      - name: Compress built packages
+        run: |
+          mkdir -p /tmp/artifacts/${{ matrix.category }}
+          find /usr/pkgsrc -name "*.tgz" -exec mv {} /tmp/artifacts/${{ matrix.category }}/ \; || true
+          du -sh /tmp/artifacts/${{ matrix.category }}
+
+      - name: Upload artifacts to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkgsrc-${{ matrix.category }}
+          path: /tmp/artifacts/${{ matrix.category }}
