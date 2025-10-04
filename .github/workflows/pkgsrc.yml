@@ -1,4 +1,4 @@
-name: pkgsrc Bulk Builder x86 for Libero GNU/Linux
+name: pkgsrc Libero GNU/Linux
 
 on:
   workflow_dispatch:
@@ -7,10 +7,6 @@ jobs:
   build:
     name: Build pkgsrc (${{ matrix.category }})
     runs-on: ubuntu-latest
-
-    container:
-      image: i386/debian:12
-      options: --user root
 
     strategy:
       fail-fast: false
@@ -49,21 +45,14 @@ jobs:
           - x11
 
     steps:
-      - name: Install Node.js
-        run: |
-          apt-get update
-          apt-get install -y curl gnupg
-          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-          apt-get install -y nodejs
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build essentials
+      - name: Install build essentials and multilib for i386
         run: |
-          dpkg --add-architecture i386
-          apt-get update
-          apt-get install -y \
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y \
             build-essential \
             gcc-multilib \
             g++-multilib \
@@ -81,7 +70,9 @@ jobs:
             tar \
             bash \
             ccache \
-            rsync
+            rsync \
+            nodejs \
+            npm
 
       - name: Download pkgsrc 2025Q3
         run: |
