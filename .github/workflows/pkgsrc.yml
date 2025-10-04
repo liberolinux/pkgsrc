@@ -49,6 +49,13 @@ jobs:
           - x11
 
     steps:
+      - name: Install Node.js
+        run: |
+          apt-get update
+          apt-get install -y curl gnupg
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
