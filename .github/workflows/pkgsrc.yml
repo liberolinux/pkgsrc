@@ -95,7 +95,7 @@ jobs:
       - name: Install pbulk
         run: |
           cd pkgsrc/pkgtools/pbulk
-          sudo bmake install
+          sudo /usr/pkg/bin/bmake install
 
       - name: Configure pbulk
         run: |
