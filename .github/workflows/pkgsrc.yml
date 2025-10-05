@@ -96,8 +96,8 @@ jobs:
             sudo sh -c "echo \"BUILDLINK_TRANSFORM+= rm:-mx32\" >> /usr/pkg/etc/mk.conf"
             sudo sh -c "echo \"BUILDLINK_TRANSFORM+= rm:-m64\" >> /usr/pkg/etc/mk.conf"
 
-            sudo sh -c "echo \"CONFIGURE_ARGS+= --build=i686-pc-linux-gnu\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"CONFIGURE_ARGS+= --host=i686-pc-linux-gnu\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"CONFIGURE_ARGS+= --build=i686-linux-gnu\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"CONFIGURE_ARGS+= --host=i686-linux-gnu\" >> /usr/pkg/etc/mk.conf"
 
             # Install pbulk
             cd /workspace/pkgsrc/pkgtools/pbulk
