@@ -71,18 +71,17 @@ jobs:
             echo '/usr/pkg/bin' >> /etc/profile
             export PATH=/usr/pkg/bin:\$PATH
 
-            # Configure mk.conf for multilib and tuning
             MKCONF=/usr/pkg/etc/mk.conf
             mkdir -p \"\$(dirname \$MKCONF)\"
-            tee -a \"\$MKCONF\" << 'EOF'
-PKGSRC_COMPILER= gcc
-CFLAGS+=      "-march=i586 -mtune=i586"
-CXXFLAGS+=    "-march=i586 -mtune=i586"
-LDFLAGS+=     "-march=i586 -mtune=i586"
-ABI=32
-MACHINE_ARCH= i386
-PREFER_PKGSRC= yes
-EOF
+            MKCONF=/usr/pkg/etc/mk.conf
+            mkdir -p "$(dirname "$MKCONF")"
+            sudo echo "PKGSRC_COMPILER= gcc" >> "$MKCONF"
+            sudo echo "CFLAGS+=      \"-march=i586 -mtune=i586\"" >> "$MKCONF"
+            sudo echo "CXXFLAGS+=    \"-march=i586 -mtune=i586\"" >> "$MKCONF"
+            sudo echo "LDFLAGS+=     \"-march=i586 -mtune=i586\"" >> "$MKCONF"
+            sudo echo "ABI=32" >> "$MKCONF"
+            sudo echo "MACHINE_ARCH= i386" >> "$MKCONF"
+            echo "PREFER_PKGSRC= yes" >> "$MKCONF"
 
             # Install pbulk
             cd /workspace/pkgsrc/pkgtools/pbulk
@@ -90,14 +89,13 @@ EOF
 
             # Configure pbulk
             mkdir -p ~/.pbulk
-            cat > ~/.pbulk/pbulk.conf << 'EOF'
-CHROOT=
-BASEDIR=/usr/pkg
-PKG_PATH=/usr/pkg/packages
-JOBS=\$(nproc)
-KEEP_GOING=yes
-LOGFILE=/tmp/pbulk.log
-EOF
+            echo "CHROOT=" > ~/.pbulk/pbulk.conf
+            echo "BASEDIR=/usr/pkg" >> ~/.pbulk/pbulk.conf
+            echo "PKG_PATH=/usr/pkg/packages" >> ~/.pbulk/pbulk.conf
+            echo "JOBS=$(nproc)" >> ~/.pbulk/pbulk.conf
+            echo "KEEP_GOING=yes" >> ~/.pbulk/pbulk.conf
+            echo "LOGFILE=/tmp/pbulk.log" >> ~/.pbulk/pbulk.conf
+
 
             # Build selected category
             cd /workspace/pkgsrc
