@@ -88,10 +88,9 @@ jobs:
       - name: Configure mk.conf for multilib and tuning
         run: |
           MKCONF="/usr/pkg/etc/mk.conf"
-          # Ensure file exists
           sudo mkdir -p "$(dirname "$MKCONF")"
-          sudo touch "$MKCONF"
-          sudo cat >> "$MKCONF" << 'EOF'
+          # Use sudo tee to append (since redirection with sudo doesn't elevate the redirection)
+          sudo tee -a "$MKCONF" << 'EOF'
           # Use gcc as compiler
           PKGSRC_COMPILER= gcc
 
@@ -100,11 +99,7 @@ jobs:
           CXXFLAGS+=    -m32 -march=i586 -mtune=i586
           LDFLAGS+=     -m32
 
-          # (Optional) If some packages use Fortran etc
-          # FFLAGS+=    -m32 -march=i586 -mtune=i586
-          # FCFLAGS+=   -m32 -march=i586 -mtune=i586
-
-          # If you want to force ABI and machine arch (if bootstrap doesn’t)
+          # Force ABI and machine arch
           ABI=32
           MACHINE_ARCH= i386
 
