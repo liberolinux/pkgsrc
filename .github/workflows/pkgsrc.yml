@@ -82,7 +82,7 @@ jobs:
       - name: Bootstrap pkgsrc into /usr/pkg
         run: |
           cd pkgsrc/bootstrap
-          sudo ./bootstrap --abi 32 --machine-arch=i386 --prefer-pkgsrc --compiler=gcc --prefix=/usr/pkg
+          sudo ./bootstrap --abi 32 --machine-arch=i386 --prefer-pkgsrc yes --compiler=gcc --prefix=/usr/pkg
           echo "/usr/pkg/bin" >> $GITHUB_PATH
 
       - name: Set target architecture
