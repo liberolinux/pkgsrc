@@ -52,7 +52,7 @@ jobs:
           docker run --rm -t \
             -v $GITHUB_WORKSPACE:/workspace \
             -w /workspace \
-            i386/debian:bookworm bash -c "
+            i386/debian:bookworm bash -c '
             set -e
 
             # Install build essentials
@@ -61,9 +61,9 @@ jobs:
 
             # Set environment for 32-bit build
             export PKGSRC_COMPILER=gcc
-            export CFLAGS='-march=i586 -mtune=i586'
-            export CXXFLAGS='-march=i586 -mtune=i586'
-            export LDFLAGS='-m32 -march=i586 -mtune=i586'
+            export CFLAGS="-march=i586 -mtune=i586"
+            export CXXFLAGS="-march=i586 -mtune=i586"
+            export LDFLAGS="-march=i586 -mtune=i586"
             export ABI=32
             export MACHINE_ARCH=i386
             export PATH=/usr/pkg/bin:$PATH
@@ -79,11 +79,11 @@ jobs:
             # Create mk.conf safely
             sudo mkdir -p /usr/pkg/etc
             MKCONF=/usr/pkg/etc/mk.conf
-            sudo tee \"$MKCONF\" > /dev/null <<EOF
+            sudo tee "$MKCONF" > /dev/null <<'EOF'
             PKGSRC_COMPILER= gcc
-            CFLAGS+=      \"-march=i586 -mtune=i586\"
-            CXXFLAGS+=    \"-march=i586 -mtune=i586\"
-            LDFLAGS+=     \"-march=i586 -mtune=i586\"
+            CFLAGS+=      "-march=i586 -mtune=i586"
+            CXXFLAGS+=    "-march=i586 -mtune=i586"
+            LDFLAGS+=     "-march=i586 -mtune=i586"
             ABI=32
             MACHINE_ARCH= i386
             PREFER_PKGSRC= yes
@@ -95,7 +95,7 @@ jobs:
 
             # Configure pbulk
             mkdir -p ~/.pbulk
-            tee ~/.pbulk/pbulk.conf > /dev/null <<EOF
+            tee ~/.pbulk/pbulk.conf > /dev/null <<'EOF'
             CHROOT=
             BASEDIR=/usr/pkg
             PKG_PATH=/usr/pkg/packages
@@ -112,7 +112,7 @@ jobs:
             mkdir -p /workspace/tmp/artifacts/${{ matrix.category }}
             rsync -av /usr/pkg/packages/${{ matrix.category }}/ /workspace/tmp/artifacts/${{ matrix.category }}/ || true
             du -sh /workspace/tmp/artifacts/${{ matrix.category }}
-          "
+          '
 
       - name: Upload artifacts to GitHub
         uses: actions/upload-artifact@v4
