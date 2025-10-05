@@ -81,6 +81,10 @@ jobs:
 
       - name: Bootstrap pkgsrc into /usr/pkg
         run: |
+          export CFLAGS="-m32 -march=i586 -mtune=i586"
+          export CXXFLAGS="-m32 -march=i586 -mtune=i586"
+          export LDFLAGS="-m32 -march=i586 -mtune=i586"
+
           cd pkgsrc/bootstrap
           sudo ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
           echo "/usr/pkg/bin" >> $GITHUB_PATH
@@ -95,9 +99,9 @@ jobs:
           PKGSRC_COMPILER= gcc
 
           # Add multilib / 32-bit-specific flags
-          CFLAGS+=      -m32
-          CXXFLAGS+=    -m32
-          LDFLAGS+=     -m32
+          CFLAGS+=      -m32 -march=i586 -mtune=i586
+          CXXFLAGS+=    -m32 -march=i586 -mtune=i586
+          LDFLAGS+=     -m32 -march=i586 -mtune=i586
 
           # Force ABI and machine arch
           ABI=32
@@ -105,6 +109,10 @@ jobs:
 
           # Prefer pkgsrc-built tools
           PREFER_PKGSRC= yes
+
+          # OpenSSL without assembly for better compatibility
+          OPENSSL_NO_ASM= yes
+
           EOF
 
       - name: Install pbulk
