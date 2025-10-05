@@ -75,7 +75,7 @@ jobs:
             
             # Bootstrap pkgsrc into /usr/pkg
             cd pkgsrc/bootstrap
-            ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
+            sudo ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
             
             # Create mk.conf with proper i386 settings
             sudo mkdir -p /usr/pkg/etc
