@@ -44,35 +44,30 @@ jobs:
           - www
           - x11
 
+    container:
+      image: i386/debian:bookworm
+      options: --user root
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build essentials and multilib for i386
+      - name: Install build essentials and pkgsrc dependencies
         run: |
-          sudo dpkg --add-architecture i386
-          sudo apt-get update
-          sudo apt-get install -y \
+          apt-get update
+          apt-get install -y \
             build-essential \
-            gcc-multilib \
-            g++-multilib \
             make \
             bmake \
             git \
             curl \
             pkg-config \
-            libssl-dev:i386 \
-            zlib1g-dev:i386 \
-            libbz2-dev:i386 \
-            libc6-dev-i386 \
             ca-certificates \
             wget \
             tar \
             bash \
             ccache \
-            rsync \
-            nodejs \
-            npm
+            rsync
 
       - name: Download pkgsrc 2025Q3
         run: |
@@ -81,27 +76,22 @@ jobs:
 
       - name: Bootstrap pkgsrc into /usr/pkg
         run: |
-          export CFLAGS="-m32"
-          export CXXFLAGS="-m32"
-          export LDFLAGS="-m32"
-
           cd pkgsrc/bootstrap
-          sudo ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
+          ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
           echo "/usr/pkg/bin" >> $GITHUB_PATH
 
       - name: Configure mk.conf for multilib and tuning
         run: |
           MKCONF="/usr/pkg/etc/mk.conf"
-          sudo mkdir -p "$(dirname "$MKCONF")"
-          # Use sudo tee to append (since redirection with sudo doesn't elevate the redirection)
-          sudo tee -a "$MKCONF" << 'EOF'
+          mkdir -p "$(dirname "$MKCONF")"
+          tee -a "$MKCONF" << 'EOF'
           # Use gcc as compiler
           PKGSRC_COMPILER= gcc
 
           # Add multilib / 32-bit-specific flags
-          CFLAGS+=      "-m32 -march=i586 -mtune=i586"
-          CXXFLAGS+=    "-m32 -march=i586 -mtune=i586"
-          LDFLAGS+=     "-m32 -march=i586 -mtune=i586"
+          CFLAGS+=      "-march=i586 -mtune=i586"
+          CXXFLAGS+=    "-march=i586 -mtune=i586"
+          LDFLAGS+=     "-march=i586 -mtune=i586"
 
           # Force ABI and machine arch
           ABI=32
@@ -110,15 +100,12 @@ jobs:
           # Prefer pkgsrc-built tools
           PREFER_PKGSRC= yes
 
-          # OpenSSL without assembly for better compatibility
-          OPENSSL_NO_ASM= yes
-
           EOF
 
       - name: Install pbulk
         run: |
           cd pkgsrc/pkgtools/pbulk
-          sudo /usr/pkg/bin/bmake install
+          /usr/pkg/bin/bmake install
 
       - name: Configure pbulk
         run: |
@@ -135,7 +122,7 @@ jobs:
       - name: Build category with pbulk
         run: |
           cd pkgsrc
-          sudo /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C $GITHUB_WORKSPACE/pkgsrc/${{ matrix.category }}
+          /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C $GITHUB_WORKSPACE/pkgsrc/${{ matrix.category }}
 
       - name: Collect built packages
         run: |
