@@ -61,8 +61,8 @@ jobs:
 
             # Set environment for 32-bit build
             export PKGSRC_COMPILER=gcc
-            export CFLAGS='-m32 -march=i586 -mtune=i586'
-            export CXXFLAGS='-m32 -march=i586 -mtune=i586'
+            export CFLAGS='-march=i586 -mtune=i586'
+            export CXXFLAGS='-march=i586 -mtune=i586'
             export LDFLAGS='-m32 -march=i586 -mtune=i586'
             export ABI=32
             export MACHINE_ARCH=i386
@@ -76,14 +76,14 @@ jobs:
             cd pkgsrc/bootstrap
             ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
 
-            # Create mk.conf with sudo and tee
+            # Create mk.conf safely
+            sudo mkdir -p /usr/pkg/etc
             MKCONF=/usr/pkg/etc/mk.conf
-            sudo mkdir -p $(dirname $MKCONF)
-            sudo tee $MKCONF > /dev/null <<EOF
+            sudo tee \"$MKCONF\" > /dev/null <<EOF
             PKGSRC_COMPILER= gcc
-            CFLAGS+=      "-march=i586 -mtune=i586"
-            CXXFLAGS+=    "-march=i586 -mtune=i586"
-            LDFLAGS+=     "-march=i586 -mtune=i586"
+            CFLAGS+=      \"-march=i586 -mtune=i586\"
+            CXXFLAGS+=    \"-march=i586 -mtune=i586\"
+            LDFLAGS+=     \"-march=i586 -mtune=i586\"
             ABI=32
             MACHINE_ARCH= i386
             PREFER_PKGSRC= yes
@@ -113,7 +113,6 @@ jobs:
             rsync -av /usr/pkg/packages/${{ matrix.category }}/ /workspace/tmp/artifacts/${{ matrix.category }}/ || true
             du -sh /workspace/tmp/artifacts/${{ matrix.category }}
           "
-
 
       - name: Upload artifacts to GitHub
         uses: actions/upload-artifact@v4
