@@ -72,18 +72,13 @@ jobs:
             # Download and extract pkgsrc
             wget https://cdn.netbsd.org/pub/pkgsrc/pkgsrc-2025Q3/pkgsrc-2025Q3.tar.gz
             tar -xzf pkgsrc-2025Q3.tar.gz
-
-            # Create /usr/pkg directory
-            sudo mkdir -p /usr/pkg/etc
-            sudo chown $(whoami) /usr/pkg/etc
-            sudo mkdir -p /usr/pkg/packages
-            sudo chown $(whoami) /usr/pkg/packages
             
             # Bootstrap pkgsrc into /usr/pkg
             cd pkgsrc/bootstrap
             sudo ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
             
             # Create mk.conf with proper i386 settings
+            sudo mkdir -p /usr/pkg/etc
             sudo sh -c "echo \"PKGSRC_COMPILER= gcc\" > /usr/pkg/etc/mk.conf"
             sudo sh -c "echo \"CFLAGS+= -m32 -march=i586 -mtune=i586\" >> /usr/pkg/etc/mk.conf"
             sudo sh -c "echo \"CXXFLAGS+= -m32 -march=i586 -mtune=i586\" >> /usr/pkg/etc/mk.conf"
