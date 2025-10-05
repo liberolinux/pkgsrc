@@ -57,7 +57,8 @@ jobs:
 
             # Install build essentials
             apt-get update
-            apt-get install -y build-essential bmake git wget tar bash ccache rsync pkg-config ca-certificates sudo
+            apt-get install -y build-essential bmake git wget tar bash ccache rsync \
+              pkg-config ca-certificates sudo gawk curl libssl-dev zlib1g-dev
 
             # Set environment for 32-bit build
             export PKGSRC_COMPILER=gcc
