@@ -92,16 +92,17 @@ jobs:
             sudo sh -c "echo \"LOWER_ARCH= i386\" >> /usr/pkg/etc/mk.conf"
             sudo sh -c "echo \"OBJECT_FMT= ELF\" >> /usr/pkg/etc/mk.conf"
             
-            # Prevent x32/x86_64 flags from leaking in
+            # Remove any -mx32 flags that might sneak in
             sudo sh -c "echo \"BUILDLINK_TRANSFORM+= rm:-mx32\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"BUILDLINK_TRANSFORM+= rm:-m64\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"BUILDLINK_TRANSFORM+= opt:-mx32:-m32\" >> /usr/pkg/etc/mk.conf"
 
-            # OpenSSL must be forced to linux-elf and no-asm to build properly
-            sudo sh -c "echo \"CONFIGURE_ARGS.openssl= linux-elf no-asm\" >> /usr/pkg/etc/mk.conf"
-            
-            # Alternative: force OpenSSL platform detection
+            # Force OpenSSL to build for i386 with correct options
+            sudo sh -c "echo \"CONFIGURE_ARGS.openssl= linux-generic32 no-asm -m32\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"MAKE_ENV.openssl+= MACHINE=i386\" >> /usr/pkg/etc/mk.conf"
             sudo sh -c "echo \"CONFIGURE_ENV.openssl+= MACHINE=i386\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"CONFIGURE_ENV.openssl+= SYSTEM=Linux\" >> /usr/pkg/etc/mk.conf"
+            
+            # Override OpenSSL's target detection completely
+            sudo sh -c "echo \"OPENSSL_CONFIGURE_TARGET= linux-generic32\" >> /usr/pkg/etc/mk.conf"
 
             # Install pbulk
             cd /workspace/pkgsrc/pkgtools/pbulk
