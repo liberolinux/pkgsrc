@@ -82,15 +82,35 @@ jobs:
       - name: Bootstrap pkgsrc into /usr/pkg
         run: |
           cd pkgsrc/bootstrap
-          sudo ./bootstrap --abi 32 --machine-arch=i386 --prefer-pkgsrc yes --compiler=gcc --prefix=/usr/pkg
+          sudo ./bootstrap --abi=32 --prefer-pkgsrc yes --compiler=gcc --prefix=/usr/pkg
           echo "/usr/pkg/bin" >> $GITHUB_PATH
 
-      - name: Set target architecture
+      - name: Configure mk.conf for multilib and tuning
         run: |
-          export PKG_DEFAULT_MACHINE=i386
-          export PKG_DEFAULT_ABI=linux
-          echo "PKG_DEFAULT_MACHINE=$PKG_DEFAULT_MACHINE" >> $GITHUB_ENV
-          echo "PKG_DEFAULT_ABI=$PKG_DEFAULT_ABI" >> $GITHUB_ENV
+          MKCONF="/usr/pkg/etc/mk.conf"
+          # Ensure file exists
+          sudo mkdir -p "$(dirname "$MKCONF")"
+          sudo touch "$MKCONF"
+          sudo cat >> "$MKCONF" << 'EOF'
+          # Use gcc as compiler
+          PKGSRC_COMPILER= gcc
+
+          # Add multilib / 32-bit-specific flags
+          CFLAGS+=      -m32 -march=i586 -mtune=i586
+          CXXFLAGS+=    -m32 -march=i586 -mtune=i586
+          LDFLAGS+=     -m32
+
+          # (Optional) If some packages use Fortran etc
+          # FFLAGS+=    -m32 -march=i586 -mtune=i586
+          # FCFLAGS+=   -m32 -march=i586 -mtune=i586
+
+          # If you want to force ABI and machine arch (if bootstrap doesn’t)
+          ABI=32
+          MACHINE_ARCH= i386
+
+          # Prefer pkgsrc-built tools
+          PREFER_PKGSRC= yes
+          EOF
 
       - name: Install pbulk
         run: |
