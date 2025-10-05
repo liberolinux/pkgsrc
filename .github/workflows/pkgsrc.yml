@@ -53,60 +53,60 @@ jobs:
             -v $GITHUB_WORKSPACE:/workspace \
             -w /workspace \
             i386/debian:bookworm bash -c "
-              set -e
-              
-              # Install build essentials
-              apt-get update
-              apt-get install -y build-essential make bmake git wget tar bash ccache rsync pkg-config ca-certificates
+            set -e
 
-              # Download and extract pkgsrc
-              wget https://cdn.netbsd.org/pub/pkgsrc/pkgsrc-2025Q3/pkgsrc-2025Q3.tar.gz
-              tar -xzf pkgsrc-2025Q3.tar.gz
+            # Install build essentials
+            apt-get update
+            apt-get install -y build-essential make bmake git wget tar bash ccache rsync pkg-config ca-certificates
 
-              # Bootstrap pkgsrc into /usr/pkg
-              cd pkgsrc/bootstrap
-              ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
+            # Download and extract pkgsrc
+            wget https://cdn.netbsd.org/pub/pkgsrc/pkgsrc-2025Q3/pkgsrc-2025Q3.tar.gz
+            tar -xzf pkgsrc-2025Q3.tar.gz
 
-              # Configure environment
-              echo '/usr/pkg/bin' >> /etc/profile
-              export PATH=/usr/pkg/bin:$PATH
+            # Bootstrap pkgsrc into /usr/pkg
+            cd pkgsrc/bootstrap
+            ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
 
-              # Configure mk.conf for multilib and tuning
-              MKCONF=/usr/pkg/etc/mk.conf
-              mkdir -p \"\$(dirname \"$MKCONF\")\"
-              tee -a \"$MKCONF\" << 'EOF'
-              PKGSRC_COMPILER= gcc
-              CFLAGS+=      \"-march=i586 -mtune=i586\"
-              CXXFLAGS+=    \"-march=i586 -mtune=i586\"
-              LDFLAGS+=     \"-march=i586 -mtune=i586\"
-              ABI=32
-              MACHINE_ARCH= i386
-              PREFER_PKGSRC= yes
-              EOF
+            # Configure environment
+            echo '/usr/pkg/bin' >> /etc/profile
+            export PATH=/usr/pkg/bin:\$PATH
 
-              # Install pbulk
-              cd /workspace/pkgsrc/pkgtools/pbulk
-              /usr/pkg/bin/bmake install
+            # Configure mk.conf for multilib and tuning
+            MKCONF=/usr/pkg/etc/mk.conf
+            mkdir -p \"\$(dirname \$MKCONF)\"
+            tee -a \"\$MKCONF\" << 'EOF'
+PKGSRC_COMPILER= gcc
+CFLAGS+=      "-march=i586 -mtune=i586"
+CXXFLAGS+=    "-march=i586 -mtune=i586"
+LDFLAGS+=     "-march=i586 -mtune=i586"
+ABI=32
+MACHINE_ARCH= i386
+PREFER_PKGSRC= yes
+EOF
 
-              # Configure pbulk
-              mkdir -p ~/.pbulk
-              cat > ~/.pbulk/pbulk.conf << 'EOF'
-              CHROOT=
-              BASEDIR=/usr/pkg
-              PKG_PATH=/usr/pkg/packages
-              JOBS=\$(nproc)
-              KEEP_GOING=yes
-              LOGFILE=/tmp/pbulk.log
-              EOF
+            # Install pbulk
+            cd /workspace/pkgsrc/pkgtools/pbulk
+            /usr/pkg/bin/bmake install
 
-              # Build selected category
-              cd /workspace/pkgsrc
-              /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C /workspace/pkgsrc/${{ matrix.category }}
+            # Configure pbulk
+            mkdir -p ~/.pbulk
+            cat > ~/.pbulk/pbulk.conf << 'EOF'
+CHROOT=
+BASEDIR=/usr/pkg
+PKG_PATH=/usr/pkg/packages
+JOBS=\$(nproc)
+KEEP_GOING=yes
+LOGFILE=/tmp/pbulk.log
+EOF
 
-              # Collect built packages
-              mkdir -p /workspace/tmp/artifacts/${{ matrix.category }}
-              rsync -av /usr/pkg/packages/${{ matrix.category }}/ /workspace/tmp/artifacts/${{ matrix.category }}/ || true
-              du -sh /workspace/tmp/artifacts/${{ matrix.category }}
+            # Build selected category
+            cd /workspace/pkgsrc
+            /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C /workspace/pkgsrc/${{ matrix.category }}
+
+            # Collect built packages
+            mkdir -p /workspace/tmp/artifacts/${{ matrix.category }}
+            rsync -av /usr/pkg/packages/${{ matrix.category }}/ /workspace/tmp/artifacts/${{ matrix.category }}/ || true
+            du -sh /workspace/tmp/artifacts/${{ matrix.category }}
             "
 
       - name: Upload artifacts to GitHub
