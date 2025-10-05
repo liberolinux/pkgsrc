@@ -82,7 +82,7 @@ jobs:
       - name: Bootstrap pkgsrc into /usr/pkg
         run: |
           cd pkgsrc/bootstrap
-          sudo ./bootstrap --abi=32 --prefer-pkgsrc yes --compiler=gcc --prefix=/usr/pkg
+          sudo ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
           echo "/usr/pkg/bin" >> $GITHUB_PATH
 
       - name: Configure mk.conf for multilib and tuning
@@ -95,8 +95,8 @@ jobs:
           PKGSRC_COMPILER= gcc
 
           # Add multilib / 32-bit-specific flags
-          CFLAGS+=      -m32 -march=i586 -mtune=i586
-          CXXFLAGS+=    -m32 -march=i586 -mtune=i586
+          CFLAGS+=      -m32
+          CXXFLAGS+=    -m32
           LDFLAGS+=     -m32
 
           # Force ABI and machine arch
