@@ -1,11 +1,10 @@
-name: pkgsrc Libero GNU/Linux
+name: Build pkgsrc Libero GNU/Linux
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build pkgsrc (${{ matrix.category }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -44,94 +43,74 @@ jobs:
           - www
           - x11
 
-    container:
-      image: i386/debian:bookworm
-      options: --user root
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build essentials and pkgsrc dependencies
+      - name: Build category in pure i386 Debian
         run: |
-          apt-get update
-          apt-get install -y \
-            build-essential \
-            make \
-            bmake \
-            git \
-            curl \
-            pkg-config \
-            ca-certificates \
-            wget \
-            tar \
-            bash \
-            ccache \
-            rsync
+          docker run --rm -t \
+            -v $GITHUB_WORKSPACE:/workspace \
+            -w /workspace \
+            i386/debian:bookworm bash -c "
+              set -e
+              
+              # Install build essentials
+              apt-get update
+              apt-get install -y build-essential make bmake git wget tar bash ccache rsync pkg-config ca-certificates
 
-      - name: Download pkgsrc 2025Q3
-        run: |
-          wget https://cdn.netbsd.org/pub/pkgsrc/pkgsrc-2025Q3/pkgsrc-2025Q3.tar.gz
-          tar -xzf pkgsrc-2025Q3.tar.gz
+              # Download and extract pkgsrc
+              wget https://cdn.netbsd.org/pub/pkgsrc/pkgsrc-2025Q3/pkgsrc-2025Q3.tar.gz
+              tar -xzf pkgsrc-2025Q3.tar.gz
 
-      - name: Bootstrap pkgsrc into /usr/pkg
-        run: |
-          cd pkgsrc/bootstrap
-          ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
-          echo "/usr/pkg/bin" >> $GITHUB_PATH
+              # Bootstrap pkgsrc into /usr/pkg
+              cd pkgsrc/bootstrap
+              ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
 
-      - name: Configure mk.conf for multilib and tuning
-        run: |
-          MKCONF="/usr/pkg/etc/mk.conf"
-          mkdir -p "$(dirname "$MKCONF")"
-          tee -a "$MKCONF" << 'EOF'
-          # Use gcc as compiler
-          PKGSRC_COMPILER= gcc
+              # Configure environment
+              echo '/usr/pkg/bin' >> /etc/profile
+              export PATH=/usr/pkg/bin:$PATH
 
-          # Add multilib / 32-bit-specific flags
-          CFLAGS+=      "-march=i586 -mtune=i586"
-          CXXFLAGS+=    "-march=i586 -mtune=i586"
-          LDFLAGS+=     "-march=i586 -mtune=i586"
+              # Configure mk.conf for multilib and tuning
+              MKCONF=/usr/pkg/etc/mk.conf
+              mkdir -p \"\$(dirname \"$MKCONF\")\"
+              tee -a \"$MKCONF\" << 'EOF'
+              PKGSRC_COMPILER= gcc
+              CFLAGS+=      \"-march=i586 -mtune=i586\"
+              CXXFLAGS+=    \"-march=i586 -mtune=i586\"
+              LDFLAGS+=     \"-march=i586 -mtune=i586\"
+              ABI=32
+              MACHINE_ARCH= i386
+              PREFER_PKGSRC= yes
+              EOF
 
-          # Force ABI and machine arch
-          ABI=32
-          MACHINE_ARCH= i386
+              # Install pbulk
+              cd /workspace/pkgsrc/pkgtools/pbulk
+              /usr/pkg/bin/bmake install
 
-          # Prefer pkgsrc-built tools
-          PREFER_PKGSRC= yes
+              # Configure pbulk
+              mkdir -p ~/.pbulk
+              cat > ~/.pbulk/pbulk.conf << 'EOF'
+              CHROOT=
+              BASEDIR=/usr/pkg
+              PKG_PATH=/usr/pkg/packages
+              JOBS=\$(nproc)
+              KEEP_GOING=yes
+              LOGFILE=/tmp/pbulk.log
+              EOF
 
-          EOF
+              # Build selected category
+              cd /workspace/pkgsrc
+              /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C /workspace/pkgsrc/${{ matrix.category }}
 
-      - name: Install pbulk
-        run: |
-          cd pkgsrc/pkgtools/pbulk
-          /usr/pkg/bin/bmake install
-
-      - name: Configure pbulk
-        run: |
-          mkdir -p ~/.pbulk
-          cat > ~/.pbulk/pbulk.conf << 'EOF'
-          CHROOT=
-          BASEDIR=/usr/pkg
-          PKG_PATH=/usr/pkg/packages
-          JOBS=$(nproc)
-          KEEP_GOING=yes
-          LOGFILE=/tmp/pbulk.log
-          EOF
-
-      - name: Build category with pbulk
-        run: |
-          cd pkgsrc
-          /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C $GITHUB_WORKSPACE/pkgsrc/${{ matrix.category }}
-
-      - name: Collect built packages
-        run: |
-          mkdir -p /tmp/artifacts/${{ matrix.category }}
-          rsync -av /usr/pkg/packages/${{ matrix.category }}/ /tmp/artifacts/${{ matrix.category }}/ || true
-          du -sh /tmp/artifacts/${{ matrix.category }}
+              # Collect built packages
+              mkdir -p /workspace/tmp/artifacts/${{ matrix.category }}
+              rsync -av /usr/pkg/packages/${{ matrix.category }}/ /workspace/tmp/artifacts/${{ matrix.category }}/ || true
+              du -sh /workspace/tmp/artifacts/${{ matrix.category }}
+            "
 
       - name: Upload artifacts to GitHub
         uses: actions/upload-artifact@v4
         with:
           name: pkgsrc-${{ matrix.category }}
-          path: /tmp/artifacts/${{ matrix.category }}
+          path: tmp/artifacts/${{ matrix.category }}
