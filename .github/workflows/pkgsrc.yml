@@ -81,9 +81,9 @@ jobs:
 
       - name: Bootstrap pkgsrc into /usr/pkg
         run: |
-          export CFLAGS="-m32 -march=i586 -mtune=i586"
-          export CXXFLAGS="-m32 -march=i586 -mtune=i586"
-          export LDFLAGS="-m32 -march=i586 -mtune=i586"
+          export CFLAGS="-m32"
+          export CXXFLAGS="-m32"
+          export LDFLAGS="-m32"
 
           cd pkgsrc/bootstrap
           sudo ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
