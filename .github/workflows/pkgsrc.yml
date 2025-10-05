@@ -76,13 +76,13 @@ jobs:
             cd pkgsrc/bootstrap
             ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
 
-            # Create mk.conf without here-doc
+            # Create mk.conf safely without EOF
             sudo mkdir -p /usr/pkg/etc
             MKCONF=/usr/pkg/etc/mk.conf
             sudo sh -c "echo 'PKGSRC_COMPILER= gcc' > \$MKCONF"
-            sudo sh -c "echo 'CFLAGS+= \"-march=i586 -mtune=i586\"' >> \$MKCONF"
-            sudo sh -c "echo 'CXXFLAGS+= \"-march=i586 -mtune=i586\"' >> \$MKCONF"
-            sudo sh -c "echo 'LDFLAGS+= \"-march=i586 -mtune=i586\"' >> \$MKCONF"
+            sudo sh -c "echo 'CFLAGS+= -march=i586 -mtune=i586' >> \$MKCONF"
+            sudo sh -c "echo 'CXXFLAGS+= -march=i586 -mtune=i586' >> \$MKCONF"
+            sudo sh -c "echo 'LDFLAGS+= -march=i586 -mtune=i586' >> \$MKCONF"
             sudo sh -c "echo 'ABI=32' >> \$MKCONF"
             sudo sh -c "echo 'MACHINE_ARCH= i386' >> \$MKCONF"
             sudo sh -c "echo 'PREFER_PKGSRC= yes' >> \$MKCONF"
@@ -91,7 +91,7 @@ jobs:
             cd /workspace/pkgsrc/pkgtools/pbulk
             sudo /usr/pkg/bin/bmake install
 
-            # Configure pbulk without here-doc
+            # Configure pbulk safely
             mkdir -p ~/.pbulk
             sh -c "echo 'CHROOT=' > ~/.pbulk/pbulk.conf"
             sh -c "echo 'BASEDIR=/usr/pkg' >> ~/.pbulk/pbulk.conf"
