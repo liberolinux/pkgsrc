@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     strategy:
       fail-fast: false
       matrix:
@@ -42,11 +42,11 @@ jobs:
           - time
           - www
           - x11
-
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+       
       - name: Build category in pure i386 Debian
         run: |
           docker run --rm -t \
@@ -54,44 +54,56 @@ jobs:
             -w /workspace \
             i386/debian:bookworm bash -c '
             set -e
-
+            
             # Install build essentials
             apt-get update
             apt-get install -y build-essential bmake git wget tar bash ccache rsync \
               pkg-config ca-certificates sudo gawk curl libssl-dev zlib1g-dev
-
+            
             # Set environment for 32-bit build
             export PKGSRC_COMPILER=gcc
-            export CFLAGS="-march=i586 -mtune=i586"
-            export CXXFLAGS="-march=i586 -mtune=i586"
-            export LDFLAGS="-march=i586 -mtune=i586"
+            export CFLAGS="-m32 -march=i586 -mtune=i586"
+            export CXXFLAGS="-m32 -march=i586 -mtune=i586"
+            export LDFLAGS="-m32"
             export ABI=32
             export MACHINE_ARCH=i386
-            export PATH=/usr/pkg/bin:$PATH
-
+            export PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH
+            
             # Download and extract pkgsrc
             wget https://cdn.netbsd.org/pub/pkgsrc/pkgsrc-2025Q3/pkgsrc-2025Q3.tar.gz
             tar -xzf pkgsrc-2025Q3.tar.gz
-
+            
             # Bootstrap pkgsrc into /usr/pkg
             cd pkgsrc/bootstrap
             ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
-
-            # Create mk.conf safely without EOF
+            
+            # Create mk.conf with proper i386 settings
             sudo mkdir -p /usr/pkg/etc
             sudo sh -c "echo \"PKGSRC_COMPILER= gcc\" > /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"CFLAGS+= -march=i586 -mtune=i586\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"CXXFLAGS+= -march=i586 -mtune=i586\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"LDFLAGS+= -march=i586 -mtune=i586\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"ABI=32\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"CFLAGS+= -m32 -march=i586 -mtune=i586\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"CXXFLAGS+= -m32 -march=i586 -mtune=i586\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"LDFLAGS+= -m32\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"ABI= 32\" >> /usr/pkg/etc/mk.conf"
             sudo sh -c "echo \"MACHINE_ARCH= i386\" >> /usr/pkg/etc/mk.conf"
             sudo sh -c "echo \"PREFER_PKGSRC= yes\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"SKIP_LICENSE_CHECK= yes\" >> /usr/pkg/etc/mk.conf"
+            
+            # Force i386 architecture detection
+            sudo sh -c "echo \"LOWER_ARCH= i386\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"OBJECT_FMT= ELF\" >> /usr/pkg/etc/mk.conf"
+            
+            # Prevent x32/x86_64 flags from leaking in
+            sudo sh -c "echo \"BUILDLINK_TRANSFORM+= rm:-mx32\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"BUILDLINK_TRANSFORM+= rm:-m64\" >> /usr/pkg/etc/mk.conf"
+
+            sudo sh -c "echo \"CONFIGURE_ARGS+= --build=i686-pc-linux-gnu\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"CONFIGURE_ARGS+= --host=i686-pc-linux-gnu\" >> /usr/pkg/etc/mk.conf"
 
             # Install pbulk
             cd /workspace/pkgsrc/pkgtools/pbulk
             sudo /usr/pkg/bin/bmake install
-
-            # Configure pbulk safely
+            
+            # Configure pbulk
             mkdir -p ~/.pbulk
             sh -c "echo \"CHROOT=\" > ~/.pbulk/pbulk.conf"
             sh -c "echo \"BASEDIR=/usr/pkg\" >> ~/.pbulk/pbulk.conf"
@@ -99,17 +111,17 @@ jobs:
             sh -c "echo \"JOBS=\$(nproc)\" >> ~/.pbulk/pbulk.conf"
             sh -c "echo \"KEEP_GOING=yes\" >> ~/.pbulk/pbulk.conf"
             sh -c "echo \"LOGFILE=/tmp/pbulk.log\" >> ~/.pbulk/pbulk.conf"
-
+            
             # Build selected category
             cd /workspace/pkgsrc
             sudo /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C /workspace/pkgsrc/${{ matrix.category }}
-
+            
             # Collect built packages
             mkdir -p /workspace/tmp/artifacts/${{ matrix.category }}
             rsync -av /usr/pkg/packages/${{ matrix.category }}/ /workspace/tmp/artifacts/${{ matrix.category }}/ || true
             du -sh /workspace/tmp/artifacts/${{ matrix.category }}
           '
-
+       
       - name: Upload artifacts to GitHub
         uses: actions/upload-artifact@v4
         with:
