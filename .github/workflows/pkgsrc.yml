@@ -76,33 +76,29 @@ jobs:
             cd pkgsrc/bootstrap
             ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
 
-            # Create mk.conf safely
+            # Create mk.conf without here-doc
             sudo mkdir -p /usr/pkg/etc
             MKCONF=/usr/pkg/etc/mk.conf
-            sudo tee "$MKCONF" > /dev/null <<'EOF'
-            PKGSRC_COMPILER= gcc
-            CFLAGS+=      "-march=i586 -mtune=i586"
-            CXXFLAGS+=    "-march=i586 -mtune=i586"
-            LDFLAGS+=     "-march=i586 -mtune=i586"
-            ABI=32
-            MACHINE_ARCH= i386
-            PREFER_PKGSRC= yes
-            EOF
+            sudo sh -c "echo 'PKGSRC_COMPILER= gcc' > \$MKCONF"
+            sudo sh -c "echo 'CFLAGS+= \"-march=i586 -mtune=i586\"' >> \$MKCONF"
+            sudo sh -c "echo 'CXXFLAGS+= \"-march=i586 -mtune=i586\"' >> \$MKCONF"
+            sudo sh -c "echo 'LDFLAGS+= \"-march=i586 -mtune=i586\"' >> \$MKCONF"
+            sudo sh -c "echo 'ABI=32' >> \$MKCONF"
+            sudo sh -c "echo 'MACHINE_ARCH= i386' >> \$MKCONF"
+            sudo sh -c "echo 'PREFER_PKGSRC= yes' >> \$MKCONF"
 
             # Install pbulk
             cd /workspace/pkgsrc/pkgtools/pbulk
             sudo /usr/pkg/bin/bmake install
 
-            # Configure pbulk
+            # Configure pbulk without here-doc
             mkdir -p ~/.pbulk
-            tee ~/.pbulk/pbulk.conf > /dev/null <<'EOF'
-            CHROOT=
-            BASEDIR=/usr/pkg
-            PKG_PATH=/usr/pkg/packages
-            JOBS=$(nproc)
-            KEEP_GOING=yes
-            LOGFILE=/tmp/pbulk.log
-            EOF
+            sh -c "echo 'CHROOT=' > ~/.pbulk/pbulk.conf"
+            sh -c "echo 'BASEDIR=/usr/pkg' >> ~/.pbulk/pbulk.conf"
+            sh -c "echo 'PKG_PATH=/usr/pkg/packages' >> ~/.pbulk/pbulk.conf"
+            sh -c "echo 'JOBS=$(nproc)' >> ~/.pbulk/pbulk.conf"
+            sh -c "echo 'KEEP_GOING=yes' >> ~/.pbulk/pbulk.conf"
+            sh -c "echo 'LOGFILE=/tmp/pbulk.log' >> ~/.pbulk/pbulk.conf"
 
             # Build selected category
             cd /workspace/pkgsrc
