@@ -96,6 +96,10 @@ jobs:
             sudo sh -c "echo \"BUILDLINK_TRANSFORM+= rm:-mx32\" >> /usr/pkg/etc/mk.conf"
             sudo sh -c "echo \"BUILDLINK_TRANSFORM+= rm:-m64\" >> /usr/pkg/etc/mk.conf"
 
+            # OpenSSL must be forced to linux-elf and no-asm to build properly
+            sudo sh -c "echo \"CONFIGURE_ARGS.openssl+= linux-elf\" >> /usr/pkg/etc/mk.conf"
+            sudo sh -c "echo \"CONFIGURE_ARGS.openssl+= no-asm\" >> /usr/pkg/etc/mk.conf"
+
             # Install pbulk
             cd /workspace/pkgsrc/pkgtools/pbulk
             sudo /usr/pkg/bin/bmake install
