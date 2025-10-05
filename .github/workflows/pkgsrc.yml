@@ -57,7 +57,7 @@ jobs:
 
             # Install build essentials
             apt-get update
-            apt-get install -y build-essential make bmake git wget tar bash ccache rsync pkg-config ca-certificates
+            apt-get install -y build-essential make bmake git wget tar bash ccache rsync pkg-config ca-certificates sudo
 
             # Download and extract pkgsrc
             wget https://cdn.netbsd.org/pub/pkgsrc/pkgsrc-2025Q3/pkgsrc-2025Q3.tar.gz
@@ -72,9 +72,7 @@ jobs:
             export PATH=/usr/pkg/bin:\$PATH
 
             MKCONF=/usr/pkg/etc/mk.conf
-            mkdir -p \"\$(dirname \$MKCONF)\"
-            MKCONF=/usr/pkg/etc/mk.conf
-            mkdir -p "$(dirname "$MKCONF")"
+            sudo mkdir -p "$(dirname "$MKCONF")"
             sudo echo "PKGSRC_COMPILER= gcc" >> "$MKCONF"
             sudo echo "CFLAGS+=      \"-march=i586 -mtune=i586\"" >> "$MKCONF"
             sudo echo "CXXFLAGS+=    \"-march=i586 -mtune=i586\"" >> "$MKCONF"
@@ -85,7 +83,7 @@ jobs:
 
             # Install pbulk
             cd /workspace/pkgsrc/pkgtools/pbulk
-            /usr/pkg/bin/bmake install
+            sudo /usr/pkg/bin/bmake install
 
             # Configure pbulk
             mkdir -p ~/.pbulk
@@ -99,7 +97,7 @@ jobs:
 
             # Build selected category
             cd /workspace/pkgsrc
-            /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C /workspace/pkgsrc/${{ matrix.category }}
+            sudo /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C /workspace/pkgsrc/${{ matrix.category }}
 
             # Collect built packages
             mkdir -p /workspace/tmp/artifacts/${{ matrix.category }}
