@@ -99,9 +99,9 @@ jobs:
           PKGSRC_COMPILER= gcc
 
           # Add multilib / 32-bit-specific flags
-          CFLAGS+=      -m32 -march=i586 -mtune=i586
-          CXXFLAGS+=    -m32 -march=i586 -mtune=i586
-          LDFLAGS+=     -m32 -march=i586 -mtune=i586
+          CFLAGS+=      "-m32 -march=i586 -mtune=i586"
+          CXXFLAGS+=    "-m32 -march=i586 -mtune=i586"
+          LDFLAGS+=     "-m32 -march=i586 -mtune=i586"
 
           # Force ABI and machine arch
           ABI=32
