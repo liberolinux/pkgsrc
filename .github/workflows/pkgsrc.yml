@@ -144,6 +144,10 @@ jobs:
           cd /usr/pkgsrc/lang/nawk
           sudo /usr/pkg/bin/bmake install
 
+      - name: Make Symbolic Link for nawk as /usr/pkg/bin/awk
+        run: |
+          sudo ln -sf /usr/pkg/bin/nawk /usr/pkg/bin/awk
+
       - name: Create work directories
         run: |
           sudo mkdir -p /tmp/pkgsrc-build /tmp/pkgsrc-distfiles
