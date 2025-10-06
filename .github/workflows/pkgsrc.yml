@@ -109,9 +109,9 @@ jobs:
           DISTDIR= /tmp/pkgsrc-distfiles
           PACKAGES= /usr/pkg/packages
 
-          make=/usr/pkg/bin/bmake
+          make=/usr/pbulk/bin/bmake
 
-          awk=/usr/pkg/bin/awk
+          awk=/usr/pbulk/bin/awk
 
           # Parallel builds
           MAKE_JOBS= 4
