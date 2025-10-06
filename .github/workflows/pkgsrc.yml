@@ -1,12 +1,13 @@
-name: Build pkgsrc Libero GNU/Linux
+name: pkgsrc Libero GNU/Linux
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build pkgsrc (${{ matrix.category }})
     runs-on: ubuntu-latest
-    
+
     strategy:
       fail-fast: false
       matrix:
@@ -42,93 +43,101 @@ jobs:
           - time
           - www
           - x11
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-       
-      - name: Build category in pure i386 Debian
+
+      - name: Install build essentials and multilib for i386
         run: |
-          docker run --rm -t \
-            -v $GITHUB_WORKSPACE:/workspace \
-            -w /workspace \
-            i386/debian:bookworm bash -c '
-            set -e
-            
-            # Install build essentials
-            apt-get update
-            apt-get install -y build-essential bmake git wget tar bash ccache rsync \
-              pkg-config ca-certificates sudo gawk curl libssl-dev zlib1g-dev
-            
-            # Set environment for 32-bit build
-            export PKGSRC_COMPILER=gcc
-            export CFLAGS="-m32 -march=i586 -mtune=i586"
-            export CXXFLAGS="-m32 -march=i586 -mtune=i586"
-            export LDFLAGS="-m32"
-            export ABI=32
-            export MACHINE_ARCH=i386
-            export PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH
-            
-            # Download and extract pkgsrc
-            wget https://cdn.netbsd.org/pub/pkgsrc/pkgsrc-2025Q3/pkgsrc-2025Q3.tar.gz
-            tar -xzf pkgsrc-2025Q3.tar.gz
-            
-            # Bootstrap pkgsrc into /usr/pkg
-            cd pkgsrc/bootstrap
-            sudo ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
-            
-            # Create mk.conf with proper i386 settings
-            sudo mkdir -p /usr/pkg/etc
-            sudo sh -c "echo \"PKGSRC_COMPILER= gcc\" > /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"CFLAGS+= -m32 -march=i586 -mtune=i586\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"CXXFLAGS+= -m32 -march=i586 -mtune=i586\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"LDFLAGS+= -m32\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"ABI= 32\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"MACHINE_ARCH= i386\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"PREFER_PKGSRC= yes\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"SKIP_LICENSE_CHECK= yes\" >> /usr/pkg/etc/mk.conf"
-            
-            # Force i386 architecture detection
-            sudo sh -c "echo \"LOWER_ARCH= i386\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"OBJECT_FMT= ELF\" >> /usr/pkg/etc/mk.conf"
-            
-            # Remove any -mx32 flags that might sneak in
-            sudo sh -c "echo \"BUILDLINK_TRANSFORM+= rm:-mx32\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"BUILDLINK_TRANSFORM+= opt:-mx32:-m32\" >> /usr/pkg/etc/mk.conf"
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            gcc-multilib \
+            g++-multilib \
+            make \
+            bmake \
+            git \
+            curl \
+            pkg-config \
+            libssl-dev:i386 \
+            zlib1g-dev:i386 \
+            libbz2-dev:i386 \
+            libc6-dev-i386 \
+            ca-certificates \
+            wget \
+            tar \
+            bash \
+            ccache \
+            rsync \
+            nodejs \
+            npm
 
-            # Force OpenSSL to build for i386 with correct options
-            sudo sh -c "echo \"CONFIGURE_ARGS.openssl= linux-generic32 no-asm -m32\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"MAKE_ENV.openssl+= MACHINE=i386\" >> /usr/pkg/etc/mk.conf"
-            sudo sh -c "echo \"CONFIGURE_ENV.openssl+= MACHINE=i386\" >> /usr/pkg/etc/mk.conf"
-            
-            # Override OpenSSL's target detection completely
-            sudo sh -c "echo \"OPENSSL_CONFIGURE_TARGET= linux-generic32\" >> /usr/pkg/etc/mk.conf"
+      - name: Download pkgsrc 2025Q3
+        run: |
+          wget https://cdn.netbsd.org/pub/pkgsrc/pkgsrc-2025Q3/pkgsrc-2025Q3.tar.gz
+          tar -xzf pkgsrc-2025Q3.tar.gz
 
-            # Install pbulk
-            cd /workspace/pkgsrc/pkgtools/pbulk
-            sudo /usr/pkg/bin/bmake install
-            
-            # Configure pbulk
-            mkdir -p ~/.pbulk
-            sh -c "echo \"CHROOT=\" > ~/.pbulk/pbulk.conf"
-            sh -c "echo \"BASEDIR=/usr/pkg\" >> ~/.pbulk/pbulk.conf"
-            sh -c "echo \"PKG_PATH=/usr/pkg/packages\" >> ~/.pbulk/pbulk.conf"
-            sh -c "echo \"JOBS=\$(nproc)\" >> ~/.pbulk/pbulk.conf"
-            sh -c "echo \"KEEP_GOING=yes\" >> ~/.pbulk/pbulk.conf"
-            sh -c "echo \"LOGFILE=/tmp/pbulk.log\" >> ~/.pbulk/pbulk.conf"
-            
-            # Build selected category
-            cd /workspace/pkgsrc
-            sudo /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C /workspace/pkgsrc/${{ matrix.category }}
-            
-            # Collect built packages
-            mkdir -p /workspace/tmp/artifacts/${{ matrix.category }}
-            rsync -av /usr/pkg/packages/${{ matrix.category }}/ /workspace/tmp/artifacts/${{ matrix.category }}/ || true
-            du -sh /workspace/tmp/artifacts/${{ matrix.category }}
-          '
-       
+      - name: Bootstrap pkgsrc into /usr/pkg
+        run: |
+          cd pkgsrc/bootstrap
+          sudo ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
+          echo "/usr/pkg/bin" >> $GITHUB_PATH
+
+      - name: Install pbulk
+        run: |
+          cd pkgsrc/pkgtools/pbulk
+          sudo /usr/pkg/bin/bmake install
+
+      - name: Configure pbulk
+        run: |
+          mkdir -p ~/.pbulk
+          cat > ~/.pbulk/pbulk.conf << 'EOF'
+          CHROOT=
+          BASEDIR=/usr/pkg
+          PKG_PATH=/usr/pkg/packages
+          JOBS=$(nproc)
+          KEEP_GOING=yes
+          LOGFILE=/tmp/pbulk.log
+          EOF
+
+      - name: Configure mk.conf for multilib and tuning
+        run: |
+          MKCONF="/usr/pkg/etc/mk.conf"
+          sudo mkdir -p "$(dirname "$MKCONF")"
+          # Use sudo tee to append (since redirection with sudo doesn't elevate the redirection)
+          sudo tee -a "$MKCONF" << 'EOF'
+          # Use gcc as compiler
+          PKGSRC_COMPILER= gcc
+
+          # Add multilib / 32-bit-specific flags
+          CFLAGS+=      "-m32 -march=i586 -mtune=i586"
+          CXXFLAGS+=    "-m32 -march=i586 -mtune=i586"
+          LDFLAGS+=     "-m32 -march=i586 -mtune=i586"
+
+          # Force ABI and machine arch
+          ABI=32
+          MACHINE_ARCH= i386
+
+          # Prefer pkgsrc-built tools
+          PREFER_PKGSRC= yes
+
+          EOF
+
+      - name: Build category with pbulk
+        run: |
+          cd pkgsrc
+          sudo /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C $GITHUB_WORKSPACE/pkgsrc/${{ matrix.category }}
+
+      - name: Collect built packages
+        run: |
+          mkdir -p /tmp/artifacts/${{ matrix.category }}
+          rsync -av /usr/pkg/packages/${{ matrix.category }}/ /tmp/artifacts/${{ matrix.category }}/ || true
+          du -sh /tmp/artifacts/${{ matrix.category }}
+
       - name: Upload artifacts to GitHub
         uses: actions/upload-artifact@v4
         with:
           name: pkgsrc-${{ matrix.category }}
-          path: tmp/artifacts/${{ matrix.category }}
+          path: /tmp/artifacts/${{ matrix.category }}
