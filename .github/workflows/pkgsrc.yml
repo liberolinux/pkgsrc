@@ -139,6 +139,11 @@ jobs:
 
           EOF
 
+      - name: Install nawk
+        run: |
+          cd /usr/pkgsrc/lang/nawk
+          sudo /usr/pkg/bin/bmake install
+
       - name: Create work directories
         run: |
           sudo mkdir -p /tmp/pkgsrc-build /tmp/pkgsrc-distfiles
