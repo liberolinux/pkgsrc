@@ -128,7 +128,7 @@ jobs:
       - name: Build category with pbulk
         run: |
           cd pkgsrc
-          sudo /usr/pkg/bin/pbulk -c ~/.pbulk/pbulk.conf -C $GITHUB_WORKSPACE/pkgsrc/${{ matrix.category }}
+          sudo /usr/pkg/bin/bulkbuild -c ~/.pbulk/pbulk.conf -C $GITHUB_WORKSPACE/pkgsrc/${{ matrix.category }}
 
       - name: Collect built packages
         run: |
