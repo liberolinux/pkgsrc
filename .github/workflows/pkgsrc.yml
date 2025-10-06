@@ -70,50 +70,20 @@ jobs:
             tar \
             bash \
             ccache \
-            rsync \
-            nodejs \
-            npm
+            rsync
 
       - name: Download pkgsrc 2025Q3
         run: |
           wget https://cdn.netbsd.org/pub/pkgsrc/pkgsrc-2025Q3/pkgsrc-2025Q3.tar.gz
           sudo tar -xzf pkgsrc-2025Q3.tar.gz -C /usr
 
-      - name: Bootstrap pkgsrc into /usr/pkg
+      - name: Create pbulk user
         run: |
-          cd /usr/pkgsrc/bootstrap
-          sudo ./bootstrap --abi 32 --prefer-pkgsrc yes --compiler gcc --prefix=/usr/pkg
-          echo "/usr/pkg/bin" >> $GITHUB_PATH
-          echo "/usr/pkg/sbin" >> $GITHUB_PATH
+          sudo useradd -m -s /bin/sh pbulk || true
 
-      - name: Install pbulk
+      - name: Create mk.conf fragment for pbulk
         run: |
-          cd /usr/pkgsrc/pkgtools/pbulk
-          sudo /usr/pkg/bin/bmake install
-
-      - name: Configure pbulk
-        run: |
-          sudo mkdir -p /etc/pbulk
-          sudo tee /etc/pbulk/pbulk.conf << 'EOF'
-          # pbulk configuration
-          bulkbuild=/usr/pkg/bin/bulkbuild
-          pkgsrc=/usr/pkgsrc
-          pkgdb=/usr/pkg/pkgdb
-          packages=/usr/pkg/packages
-          prefix=/usr/pkg
-          varbase=/var
-          AWK=/usr/pkg/bin/nawk
-          make=/usr/pkg/bin/bmake
-          JOBS=$(nproc)
-          KEEP_GOING=yes
-          LOGFILE=/tmp/pbulk.log
-          EOF
-
-      - name: Configure mk.conf for multilib and tuning
-        run: |
-          MKCONF="/usr/pkg/etc/mk.conf"
-          sudo mkdir -p "$(dirname "$MKCONF")"
-          sudo tee -a "$MKCONF" << 'EOF'
+          cat > /tmp/mk.conf.frag << 'EOF'
           # Use gcc as compiler
           PKGSRC_COMPILER= gcc
 
@@ -123,8 +93,6 @@ jobs:
           CXXFLAGS+=    -m32 -march=i586 -mtune=i586
           LDFLAGS+=     -m32 -march=i586 -mtune=i586
 
-          AWK=/usr/pkg/bin/nawk
-
           # Force ABI and machine arch
           ABI=32
           MACHINE_ARCH= i386
@@ -132,40 +100,105 @@ jobs:
           # Prefer pkgsrc-built tools
           PREFER_PKGSRC= yes
 
-          # Bulk build settings
+          # Allow vulnerable packages and skip license checks for CI
+          ALLOW_VULNERABLE_PACKAGES= yes
+          SKIP_LICENSE_CHECK= yes
+
+          # Build directories
           WRKOBJDIR= /tmp/pkgsrc-build
           DISTDIR= /tmp/pkgsrc-distfiles
           PACKAGES= /usr/pkg/packages
 
+          # Parallel builds
+          MAKE_JOBS= 4
+
           EOF
 
-      - name: Install nawk
+      - name: Deploy and configure pbulk using pbulk.sh
         run: |
-          cd /usr/pkgsrc/lang/nawk
-          sudo /usr/pkg/bin/bmake install
+          cd /usr/pkgsrc/mk/pbulk
+          # Use -n for native make, -l for limited build, -c for mk.conf fragment
+          sudo sh pbulk.sh -nlc /tmp/mk.conf.frag
 
-      - name: Make Symbolic Link for nawk as /usr/pkg/bin/awk
+      - name: Create package list for category
         run: |
-          sudo ln -sf /usr/pkg/bin/nawk /usr/pkg/bin/awk
+          # Create list of packages in the specified category
+          cd /usr/pkgsrc/${{ matrix.category }}
+          ls -d */ 2>/dev/null | sed 's|/$||' | grep -v CVS | \
+            awk -v cat="${{ matrix.category }}" '{print cat "/" $1}' | \
+            sudo tee /usr/pbulk/etc/pbulk.list
+          
+          echo "Packages to build:"
+          cat /usr/pbulk/etc/pbulk.list
+
+      - name: Configure pbulk.conf for better stability
+        run: |
+          # Add resource limits to avoid hangs
+          sudo sed -i '1i\
+          ulimit -t 1800\
+          ulimit -v 2097152' /usr/pbulk/etc/pbulk.conf
+          
+          echo "pbulk.conf contents:"
+          sudo cat /usr/pbulk/etc/pbulk.conf
 
       - name: Create work directories
         run: |
-          sudo mkdir -p /tmp/pkgsrc-build /tmp/pkgsrc-distfiles
+          sudo mkdir -p /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pkg/packages
+          sudo chown -R pbulk:pbulk /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pkg/packages
           sudo chmod 1777 /tmp/pkgsrc-build /tmp/pkgsrc-distfiles
 
-      - name: Build category with pbulk
+      - name: Run pbulk bulk build
         run: |
-          cd /usr/pkgsrc
-          sudo /usr/pkg/bin/bulkbuild -c /etc/pbulk/pbulk.conf /usr/pkgsrc/${{ matrix.category }}/*
+          # Run bulkbuild as root (pbulk.sh should have set things up)
+          sudo /usr/pbulk/bin/bulkbuild 2>&1 | tee /tmp/bulkbuild.log || {
+            echo "Build failed or partially completed"
+            echo "Last 100 lines of build log:"
+            tail -100 /tmp/bulkbuild.log
+            # Don't fail the job - we want to collect whatever was built
+            true
+          }
+
+      - name: Show build summary
+        if: always()
+        run: |
+          echo "=== Build Summary ==="
+          if [ -f /usr/pbulk/bulklog/meta/report.txt ]; then
+            cat /usr/pbulk/bulklog/meta/report.txt
+          else
+            echo "No report.txt found"
+          fi
+          
+          echo ""
+          echo "=== Built Packages ==="
+          find /usr/pkg/packages -name "*.tgz" -o -name "*.tar.gz" || echo "No packages found"
+          
+          echo ""
+          echo "=== Disk Usage ==="
+          du -sh /usr/pkg/packages 2>/dev/null || true
+          du -sh /tmp/pkgsrc-build 2>/dev/null || true
 
       - name: Collect built packages
+        if: always()
         run: |
           mkdir -p /tmp/artifacts/${{ matrix.category }}
-          sudo rsync -av /usr/pkg/packages/ /tmp/artifacts/${{ matrix.category }}/ || true
-          du -sh /tmp/artifacts/${{ matrix.category }}
+          
+          # Copy built packages
+          if [ -d /usr/pkg/packages ]; then
+            sudo rsync -av /usr/pkg/packages/ /tmp/artifacts/${{ matrix.category }}/ || true
+          fi
+          
+          # Copy build logs if available
+          if [ -d /usr/pbulk/bulklog ]; then
+            sudo rsync -av /usr/pbulk/bulklog/ /tmp/artifacts/${{ matrix.category }}/bulklog/ || true
+          fi
+          
+          # Make artifacts readable
+          sudo chmod -R a+r /tmp/artifacts/${{ matrix.category }}
 
       - name: Upload artifacts to GitHub
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: pkgsrc-${{ matrix.category }}
           path: /tmp/artifacts/${{ matrix.category }}
+          
