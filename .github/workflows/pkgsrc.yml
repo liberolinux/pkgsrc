@@ -122,6 +122,8 @@ jobs:
           CXXFLAGS+=    -m32 -march=i586 -mtune=i586
           LDFLAGS+=     -m32 -march=i586 -mtune=i586
 
+          AWK=/usr/pkg/bin/nawk
+
           # Force ABI and machine arch
           ABI=32
           MACHINE_ARCH= i386
@@ -143,6 +145,7 @@ jobs:
 
       - name: Build category with pbulk
         run: |
+          export AWK=/usr/pkg/bin/nawk
           cd /usr/pkgsrc
           sudo /usr/pkg/bin/bulkbuild -c /etc/pbulk/pbulk.conf /usr/pkgsrc/${{ matrix.category }}/*
 
