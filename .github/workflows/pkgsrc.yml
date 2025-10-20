@@ -88,10 +88,10 @@ jobs:
           PKGSRC_COMPILER= gcc
 
           # Add multilib / 32-bit-specific flags
-          CFLAGS+=      "-m32 -march=i586 -mtune=i586"
-          CPPFLAGS+=    "-m32 -march=i586 -mtune=i586"
-          CXXFLAGS+=    "-m32 -march=i586 -mtune=i586"
-          LDFLAGS+=     "-m32 -march=i586 -mtune=i586"
+          CFLAGS+=      -m32 -march=i586 -mtune=i586
+          CPPFLAGS+=    -m32 -march=i586 -mtune=i586
+          CXXFLAGS+=    -m32 -march=i586 -mtune=i586
+          LDFLAGS+=     -m32 -march=i586 -mtune=i586
 
           # Force ABI and machine arch
           ABI=32
@@ -109,20 +109,25 @@ jobs:
           DISTDIR= /tmp/pkgsrc-distfiles
           PACKAGES= /usr/pkg/packages
 
-          make=/usr/pbulk/bin/bmake
-
-          awk=/usr/pbulk/bin/awk
-
           # Parallel builds
-          MAKE_JOBS= 4
+          MAKE_JOBS= $(nproc)
+
+          # Pbulk specific settings
+          PBULK_CACHE_DIRECTORY= /usr/pbulk/cache
+          BULKFILESDIR= /usr/pbulk/bulklog
 
           EOF
+
+      - name: Bootstrap pkgsrc first
+        run: |
+          cd /usr/pkgsrc/bootstrap
+          sudo ./bootstrap --prefix=/usr/pkg --pkgdbdir=/usr/pkg/pkgdb --workdir=/tmp/pkgsrc-bootstrap
 
       - name: Deploy and configure pbulk using pbulk.sh
         run: |
           cd /usr/pkgsrc/mk/pbulk
           # Use -n for native make, -l for limited build, -c for mk.conf fragment
-          sudo sh pbulk.sh -nlc /tmp/mk.conf.frag
+          sudo env PACKAGES=/usr/pkg/packages BULKLOG=/usr/pbulk/bulklog PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH sh pbulk.sh -n -c /tmp/mk.conf.frag
 
       - name: Create package list for category
         run: |
@@ -137,24 +142,53 @@ jobs:
 
       - name: Configure pbulk.conf for better stability
         run: |
-          # Add resource limits to avoid hangs
-          sudo sed -i '1i\
-          ulimit -t 1800\
-          ulimit -v 2097152' /usr/pbulk/etc/pbulk.conf
+          # Check if pbulk.conf exists and add resource limits
+          if [ -f /usr/pbulk/etc/pbulk.conf ]; then
+            sudo sed -i '1i\
+            ulimit -t 1800\
+            ulimit -v 2097152' /usr/pbulk/etc/pbulk.conf
+            
+            echo "pbulk.conf contents:"
+            sudo cat /usr/pbulk/etc/pbulk.conf
+          else
+            echo "Warning: pbulk.conf not found, creating basic version"
+            sudo mkdir -p /usr/pbulk/etc
+            sudo bash -c 'cat > /usr/pbulk/etc/pbulk.conf << "PBULK_EOF"
+          ulimit -t 1800
+          ulimit -v 2097152
           
-          echo "pbulk.conf contents:"
-          sudo cat /usr/pbulk/etc/pbulk.conf
+          # Basic pbulk configuration
+          master_mode=no
+          PBULK_EOF'
+          fi
 
       - name: Create work directories
         run: |
-          sudo mkdir -p /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pkg/packages
-          sudo chown -R pbulk:pbulk /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pkg/packages
+          sudo mkdir -p /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pkg/packages /usr/pbulk/bulklog /usr/pbulk/cache
+          sudo chown -R pbulk:pbulk /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pkg/packages /usr/pbulk
           sudo chmod 1777 /tmp/pkgsrc-build /tmp/pkgsrc-distfiles
+
+      - name: Verify pbulk installation
+        run: |
+          echo "=== Checking pbulk installation ==="
+          ls -la /usr/pbulk/bin/ || echo "pbulk bin directory not found"
+          ls -la /usr/pbulk/etc/ || echo "pbulk etc directory not found"
+          
+          echo ""
+          echo "=== Checking mk.conf ==="
+          cat /usr/pkg/etc/mk.conf || echo "mk.conf not found"
+          
+          echo ""
+          echo "=== Package list ==="
+          cat /usr/pbulk/etc/pbulk.list || echo "pbulk.list not found"
 
       - name: Run pbulk bulk build
         run: |
-          # Run bulkbuild as root (pbulk.sh should have set things up)
-          sudo /usr/pbulk/bin/bulkbuild 2>&1 | tee /tmp/bulkbuild.log || {
+          # Ensure PATH includes pkgsrc tools
+          export PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH
+          
+          # Run bulkbuild as pbulk user
+          sudo -u pbulk env PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH /usr/pbulk/bin/bulkbuild 2>&1 | tee /tmp/bulkbuild.log || {
             echo "Build failed or partially completed"
             echo "Last 100 lines of build log:"
             tail -100 /tmp/bulkbuild.log
