@@ -115,7 +115,7 @@ jobs:
             echo "PACKAGES= /usr/pkg/packages"
             echo ""
             echo "# Parallel builds - using all available cores"
-            echo "MAKE_JOBS= $NPROC"
+            echo "MAKE_JOBS= 64"
             echo ""
             echo "# Pbulk specific settings"
             echo "PBULK_CACHE_DIRECTORY= /usr/pbulk/cache"
@@ -191,11 +191,30 @@ jobs:
           # Ensure PATH includes pkgsrc tools
           export PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH
           
-          # Run bulkbuild as pbulk user
+          # Diagnostics: print generated mk.conf and package list to help debug Makefile errors
+          echo "=== /tmp/mk.conf.frag ==="
+          sudo sed -n '1,200p' /tmp/mk.conf.frag || echo "mk.conf fragment not found"
+          echo ""
+          echo "=== /usr/pbulk/etc/pbulk.list ==="
+          sudo sed -n '1,200p' /usr/pbulk/etc/pbulk.list || echo "pbulk.list not found"
+          echo ""
+          echo "=== Top-level Makefiles in category (first 80 lines each) ==="
+          # Show the first Makefile-like files from the category directory (safe preview)
+          if [ -d /usr/pkgsrc/${{ matrix.category }} ]; then
+            for f in $(ls /usr/pkgsrc/${{ matrix.category }} | head -n 20); do
+              if [ -f "/usr/pkgsrc/${{ matrix.category }}/${f}/Makefile" ]; then
+                echo "---- /usr/pkgsrc/${{ matrix.category }}/${f}/Makefile ----"
+                sudo sed -n '1,80p' "/usr/pkgsrc/${{ matrix.category }}/${f}/Makefile"
+                echo ""
+              fi
+            done
+          fi
+
+          # Run bulkbuild as pbulk user (capture output)
           sudo -u pbulk env PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH /usr/pbulk/bin/bulkbuild 2>&1 | tee /tmp/bulkbuild.log || {
             echo "Build failed or partially completed"
             echo "Last 100 lines of build log:"
-            tail -100 /tmp/bulkbuild.log
+            tail -100 /tmp/bulkbuild.log || true
             # Don't fail the job - we want to collect whatever was built
             true
           }
