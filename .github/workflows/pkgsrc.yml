@@ -87,40 +87,40 @@ jobs:
           NPROC=$(nproc)
           echo "Building with $NPROC parallel jobs"
           
-          cat > /tmp/mk.conf.frag << EOF
-          # Use gcc as compiler
-          PKGSRC_COMPILER= gcc
-
-          # Add multilib / 32-bit-specific flags
-          CFLAGS+=      -m32 -march=i586 -mtune=i586
-          CPPFLAGS+=    -m32 -march=i586 -mtune=i586
-          CXXFLAGS+=    -m32 -march=i586 -mtune=i586
-          LDFLAGS+=     -m32 -march=i586 -mtune=i586
-
-          # Force ABI and machine arch
-          ABI=32
-          MACHINE_ARCH= i386
-
-          # Prefer pkgsrc-built tools
-          PREFER_PKGSRC= yes
-
-          # Allow vulnerable packages and skip license checks for CI
-          ALLOW_VULNERABLE_PACKAGES= yes
-          SKIP_LICENSE_CHECK= yes
-
-          # Build directories
-          WRKOBJDIR= /tmp/pkgsrc-build
-          DISTDIR= /tmp/pkgsrc-distfiles
-          PACKAGES= /usr/pkg/packages
-
-          # Parallel builds - using all available cores
-          MAKE_JOBS= $NPROC
-
-          # Pbulk specific settings
-          PBULK_CACHE_DIRECTORY= /usr/pbulk/cache
-          BULKFILESDIR= /usr/pbulk/bulklog
-
-          EOF
+          # Create mk.conf fragment
+          {
+            echo "# Use gcc as compiler"
+            echo "PKGSRC_COMPILER= gcc"
+            echo ""
+            echo "# Add multilib / 32-bit-specific flags"
+            echo "CFLAGS+=      -m32 -march=i586 -mtune=i586"
+            echo "CPPFLAGS+=    -m32 -march=i586 -mtune=i586"
+            echo "CXXFLAGS+=    -m32 -march=i586 -mtune=i586"
+            echo "LDFLAGS+=     -m32 -march=i586 -mtune=i586"
+            echo ""
+            echo "# Force ABI and machine arch"
+            echo "ABI=32"
+            echo "MACHINE_ARCH= i386"
+            echo ""
+            echo "# Prefer pkgsrc-built tools"
+            echo "PREFER_PKGSRC= yes"
+            echo ""
+            echo "# Allow vulnerable packages and skip license checks for CI"
+            echo "ALLOW_VULNERABLE_PACKAGES= yes"
+            echo "SKIP_LICENSE_CHECK= yes"
+            echo ""
+            echo "# Build directories"
+            echo "WRKOBJDIR= /tmp/pkgsrc-build"
+            echo "DISTDIR= /tmp/pkgsrc-distfiles"
+            echo "PACKAGES= /usr/pkg/packages"
+            echo ""
+            echo "# Parallel builds - using all available cores"
+            echo "MAKE_JOBS= $NPROC"
+            echo ""
+            echo "# Pbulk specific settings"
+            echo "PBULK_CACHE_DIRECTORY= /usr/pbulk/cache"
+            echo "BULKFILESDIR= /usr/pbulk/bulklog"
+          } > /tmp/mk.conf.frag
 
       - name: Bootstrap pkgsrc first
         run: |
