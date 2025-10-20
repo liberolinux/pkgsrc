@@ -83,7 +83,11 @@ jobs:
 
       - name: Create mk.conf fragment for pbulk
         run: |
-          cat > /tmp/mk.conf.frag << 'EOF'
+          # Get number of processors
+          NPROC=$(nproc)
+          echo "Building with $NPROC parallel jobs"
+          
+          cat > /tmp/mk.conf.frag << EOF
           # Use gcc as compiler
           PKGSRC_COMPILER= gcc
 
@@ -109,8 +113,8 @@ jobs:
           DISTDIR= /tmp/pkgsrc-distfiles
           PACKAGES= /usr/pkg/packages
 
-          # Parallel builds
-          MAKE_JOBS= $(nproc)
+          # Parallel builds - using all available cores
+          MAKE_JOBS= $NPROC
 
           # Pbulk specific settings
           PBULK_CACHE_DIRECTORY= /usr/pbulk/cache
@@ -154,12 +158,12 @@ jobs:
             echo "Warning: pbulk.conf not found, creating basic version"
             sudo mkdir -p /usr/pbulk/etc
             sudo bash -c 'cat > /usr/pbulk/etc/pbulk.conf << "PBULK_EOF"
-          ulimit -t 1800
-          ulimit -v 2097152
-          
-          # Basic pbulk configuration
-          master_mode=no
-          PBULK_EOF'
+            ulimit -t 1800
+            ulimit -v 2097152
+            
+            # Basic pbulk configuration
+            master_mode=no
+            PBULK_EOF'
           fi
 
       - name: Create work directories
