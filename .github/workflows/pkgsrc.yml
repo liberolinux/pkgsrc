@@ -122,11 +122,6 @@ jobs:
             echo "BULKFILESDIR= /usr/pbulk/bulklog"
           } > /tmp/mk.conf.frag
 
-      - name: Bootstrap pkgsrc first
-        run: |
-          cd /usr/pkgsrc/bootstrap
-          sudo ./bootstrap --prefix=/usr/pkg --pkgdbdir=/usr/pkg/pkgdb --workdir=/tmp/pkgsrc-bootstrap
-
       - name: Deploy and configure pbulk using pbulk.sh
         run: |
           cd /usr/pkgsrc/mk/pbulk
