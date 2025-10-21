@@ -130,8 +130,8 @@ jobs:
       - name: Deploy and configure pbulk using pbulk.sh
         run: |
           cd /usr/pkgsrc/mk/pbulk
-          # Use -n for native make, -l for limited build, -c for mk.conf fragment
-          sudo env PACKAGES=/usr/pkg/packages BULKLOG=/usr/pbulk/bulklog PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH sh pbulk.sh -n -c /tmp/mk.conf.frag
+          # Use -c to provide mk.conf fragment during pbulk setup
+          sudo env PACKAGES=/usr/pkg/packages BULKLOG=/usr/pbulk/bulklog PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH sh pbulk.sh -c /tmp/mk.conf.frag
 
       - name: Create package list for category
         run: |
