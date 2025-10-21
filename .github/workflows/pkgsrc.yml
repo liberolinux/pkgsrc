@@ -112,7 +112,7 @@ jobs:
             echo "# Build directories"
             echo "WRKOBJDIR= /tmp/pkgsrc-build"
             echo "DISTDIR= /tmp/pkgsrc-distfiles"
-            echo "PACKAGES= /usr/pkg/packages"
+            echo "PACKAGES= /usr/pbulk/packages"
             echo ""
             echo "# Parallel builds - using all available cores"
             echo "MAKE_JOBS= 64"
@@ -125,8 +125,9 @@ jobs:
       - name: Deploy and configure pbulk using pbulk.sh
         run: |
           cd /usr/pkgsrc/mk/pbulk
+          sudo install -d -o pbulk -g pbulk -m 755 /usr/pbulk/packages
           # Use -c to provide mk.conf fragment during pbulk setup
-          sudo env PACKAGES=/usr/pkg/packages BULKLOG=/usr/pbulk/bulklog PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH sh pbulk.sh -c /tmp/mk.conf.frag
+          sudo env PACKAGES=/usr/pbulk/packages BULKLOG=/usr/pbulk/bulklog PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH sh pbulk.sh -c /tmp/mk.conf.frag
 
       - name: Create package list for category
         run: |
@@ -163,8 +164,8 @@ jobs:
 
       - name: Create work directories
         run: |
-          sudo mkdir -p /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pkg/packages /usr/pkg/packages/All /usr/pbulk/bulklog /usr/pbulk/cache
-          sudo chown -R pbulk:pbulk /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pkg/packages /usr/pbulk
+          sudo mkdir -p /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pbulk/packages /usr/pbulk/packages/All /usr/pbulk/bulklog /usr/pbulk/cache
+          sudo chown -R pbulk:pbulk /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pbulk/packages /usr/pbulk/bulklog /usr/pbulk/cache
           sudo chmod 1777 /tmp/pkgsrc-build /tmp/pkgsrc-distfiles
 
       - name: Verify pbulk installation
@@ -206,7 +207,7 @@ jobs:
           fi
 
           # Run bulkbuild as pbulk user (capture output)
-          sudo -u pbulk mkdir -p /usr/pkg/packages/All
+          sudo -u pbulk mkdir -p /usr/pbulk/packages/All
           sudo -u pbulk env PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH /usr/pbulk/bin/bulkbuild 2>&1 | tee /tmp/bulkbuild.log || {
             echo "Build failed or partially completed"
             echo "Last 100 lines of build log:"
@@ -227,11 +228,11 @@ jobs:
           
           echo ""
           echo "=== Built Packages ==="
-          find /usr/pkg/packages -name "*.tgz" -o -name "*.tar.gz" || echo "No packages found"
+          find /usr/pbulk/packages -name "*.tgz" -o -name "*.tar.gz" || echo "No packages found"
           
           echo ""
           echo "=== Disk Usage ==="
-          du -sh /usr/pkg/packages 2>/dev/null || true
+          du -sh /usr/pbulk/packages 2>/dev/null || true
           du -sh /tmp/pkgsrc-build 2>/dev/null || true
 
       - name: Collect built packages
@@ -240,8 +241,8 @@ jobs:
           mkdir -p /tmp/artifacts/${{ matrix.category }}
           
           # Copy built packages
-          if [ -d /usr/pkg/packages ]; then
-            sudo rsync -av /usr/pkg/packages/ /tmp/artifacts/${{ matrix.category }}/ || true
+          if [ -d /usr/pbulk/packages ]; then
+            sudo rsync -av /usr/pbulk/packages/ /tmp/artifacts/${{ matrix.category }}/ || true
           fi
           
           # Copy build logs if available
