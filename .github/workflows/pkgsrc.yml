@@ -206,9 +206,9 @@ jobs:
             done
           fi
 
-          # Run bulkbuild as pbulk user (capture output)
-          sudo -u pbulk mkdir -p /usr/pbulk/packages/All
-          sudo -u pbulk env PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH /usr/pbulk/bin/bulkbuild 2>&1 | tee /tmp/bulkbuild.log || {
+          # Run bulkbuild (requires root for bootstrap cleanup)
+          sudo install -d -o pbulk -g pbulk -m 775 /usr/pbulk/packages/All
+          sudo env PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH /usr/pbulk/bin/bulkbuild 2>&1 | tee /tmp/bulkbuild.log || {
             echo "Build failed or partially completed"
             echo "Last 100 lines of build log:"
             tail -100 /tmp/bulkbuild.log || true
