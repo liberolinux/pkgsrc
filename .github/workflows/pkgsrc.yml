@@ -163,7 +163,7 @@ jobs:
 
       - name: Create work directories
         run: |
-          sudo mkdir -p /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pkg/packages /usr/pbulk/bulklog /usr/pbulk/cache
+          sudo mkdir -p /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pkg/packages /usr/pkg/packages/All /usr/pbulk/bulklog /usr/pbulk/cache
           sudo chown -R pbulk:pbulk /tmp/pkgsrc-build /tmp/pkgsrc-distfiles /usr/pkg/packages /usr/pbulk
           sudo chmod 1777 /tmp/pkgsrc-build /tmp/pkgsrc-distfiles
 
